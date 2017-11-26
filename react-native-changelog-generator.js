@@ -1,41 +1,49 @@
 'use strict';
 
-const base = '0.38-stable';
-const compare = '0.39-stable';
+const base = '0.50-stable';
+const compare = '0.51-stable';
 
 function fetchJSON(host, path) {
   return new Promise((resolve, reject) => {
     let data = '';
 
-    require('https').get({
-      host,
-      path,
-      headers: { 'User-Agent': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)' },
-    }).on('response', response => {
-      response.on('data', chunk => {
-        data += chunk;
-      });
-
-      response.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          resolve(json);
-        } catch (e) {
-          reject(e);
+    require('https')
+      .get({
+        host,
+        path,
+        headers: {
+          'User-Agent': 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)'
         }
-      });
+      })
+      .on('response', response => {
+        response.on('data', chunk => {
+          data += chunk;
+        });
 
-      response.on('error', error => {
-        reject(error);
+        response.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            resolve(json);
+          } catch (e) {
+            reject(e);
+          }
+        });
+
+        response.on('error', error => {
+          reject(error);
+        });
       });
-    });
   });
 }
 
 function filterCICommits(commits) {
   return commits.filter(item => {
     const text = item.commit.message.toLowerCase();
-    return !(text.includes('travis') || text.includes('circleci') || text.includes('circle ci'));
+    return !(
+      text.includes('travis') ||
+      text.includes('circleci') ||
+      text.includes('circle ci')
+    );
   });
 }
 
@@ -48,19 +56,27 @@ function isAndroidCommit(change) {
 }
 
 function isIOSCommit(change) {
-  return /\b(ios|xcode|swift|objective-c|iphone|ipad)\b/i.test(change) || /ios\b/i.test(change) || /\brct/i.test(change);
+  return (
+    /\b(ios|xcode|swift|objective-c|iphone|ipad)\b/i.test(change) ||
+    /ios\b/i.test(change) ||
+    /\brct/i.test(change)
+  );
 }
 
 function isBugFix(change) {
-  return /\b(fix|fixes|crash|exception)\b/i.test(change);
+  return /\b(fix(es|ed|ing)?|crash|exception)\b/i.test(change);
 }
 
 function isNewFeature(change) {
-  return /\b(feature|add)\b/i.test(change);
+  return /\b(feature|add(s|ed)?|introduc(e|ed|ing)?|implement(s|ed)?)\b/i.test(
+    change
+  );
 }
 
 function getChangeMessage(item) {
-  return `  - ${item.commit.message.split('\n')[0]} (${item.sha.slice(0, 7)}) ${item.author ? '- @' + item.author.login : ''}`;
+  return `* ${item.commit.message.split('\n')[0]} (${item.sha.slice(0, 7)}) ${
+    item.author ? '- @' + item.author.login : ''
+  }`;
 }
 
 function getChangelogDesc(commits) {
@@ -68,7 +84,7 @@ function getChangelogDesc(commits) {
     breaking: { android: [], ios: [], unknown: [] },
     android: { fix: [], feat: [], others: [] },
     ios: { fix: [], feat: [], others: [] },
-    unknown: { fix: [], feat: [], others: [] },
+    unknown: { fix: [], feat: [], others: [] }
   };
 
   commits.forEach(item => {
@@ -176,7 +192,10 @@ ${data.unknown.others.join('\n')}
 `;
 }
 
-fetchJSON('api.github.com', '/repos/facebook/react-native/compare/' + base + '...' + compare)
+fetchJSON(
+  'api.github.com',
+  '/repos/facebook/react-native/compare/' + base + '...' + compare
+)
   .then(data => data.commits)
   .then(filterCICommits)
   .then(getChangelogDesc)
